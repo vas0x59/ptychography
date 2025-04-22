@@ -1,6 +1,7 @@
 import numpy as np
 import serial
 import time
+import struct
 
 MG_BYTE = 0xAA
 CMD_CLEAR_SCREEN = 0x01
@@ -19,7 +20,7 @@ def color565(r, g, b):
     return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
 
 class LEDPanelSender:
-    def __init__(self, port="/dev/ttyUSB0", baudrate=115200):
+    def __init__(self, port="/dev/ttyUSB0", baudrate=921600):
         self.port = port
         self.baudrate = baudrate
         self.serial = serial.Serial(self.port, self.baudrate, timeout=1)
@@ -37,16 +38,21 @@ class LEDPanelSender:
 
         # Send start byte and command
         self.serial.write(bytes([MG_BYTE, CMD_DISPLAY_IMG]))
+        time.sleep(0.001)
 
         # Send image pixel by pixel (little-endian RGB565)
         for y in range(HEIGHT):
             for x in range(WIDTH):
                 r, g, b = img[y, x]
-                rgb565 = color565(r, g, b)
+                # print(img[y, x])
+                rgb565 = color565(int(r), int(g), int(b))
                 # Little endian: low byte first
                 self.serial.write(bytes([rgb565 & 0xFF, (rgb565 >> 8) & 0xFF]))
+                # self.serial.write(struct.pack("<H", rgb565))
+                # time.sleep(0.0000001)
+            time.sleep(0.002)
 
-        time.sleep(0.5)
+        # time.sleep(0.1)
 
     def clear_screen(self):
         """
@@ -72,18 +78,25 @@ class LEDPanelSender:
 
         rgb565 = color565(r, g, b)
         self.serial.write(bytes([MG_BYTE, CMD_PUT_PIXEL, x, y, rgb565 & 0xFF, (rgb565 >> 8) & 0xFF]))
-        time.sleep(0.01)
+        time.sleep(0.001)
 
 # Example usage:
 if __name__ == "__main__":
     # Create a test image (black with red pixel grid)
     image = np.zeros((HEIGHT, WIDTH, 3), dtype=np.uint8)
-    for y in range(0, HEIGHT, 4):
-        for x in range(0, WIDTH, 4):
-            image[y, x] = [255, 0, 0]
+    # for y in range(0, 20):
+    #     for x in range(0, 20):
+    #         image[y, x] = [0, 255, 0]
+    image[:, 50] = [0, 255, 0]
 
     sender = LEDPanelSender(port="/dev/ttyUSB0")
     sender.clear_screen()
-    sender.set_brightness(128)
+    sender.set_brightness(20)
+    # sender.put_pixel(10, 10, 0, 255, 0)
     sender.send_image(image)
-    sender.put_pixel(10, 10, 0, 255, 0)  # Example: set pixel (10, 10) to green
+    sender.put_pixel(10, 10, 0, 255, 0)
+    # while True:
+    #     for i in range(0, 32):
+    #         # sender.put_pixel(i, i, 0, 255, 0)  # Example: set pixel (10, 10) to green
+    #         for j in range(0, 32):
+    #             sender.put_pixel(j, i, 0, 255, 0)  # Example: set pixel (10, 10) to green

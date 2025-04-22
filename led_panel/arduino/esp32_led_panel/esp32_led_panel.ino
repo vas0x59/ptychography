@@ -26,7 +26,7 @@ enum Command {
   CMD_SET_BRIGHTNESS = 0x02,
   CMD_DISPLAY_IMG = 0x03,
   CMD_PUT_PIXEL = 0x04
-}
+};
 
 MatrixPanel_I2S_DMA *dma_display = nullptr;
 
@@ -38,7 +38,7 @@ struct CustomMirrorScanTypeMapping {
     int16_t x = coords.x;
     int16_t y = coords.y;
 
-    coords.x = (x & 15) + ((x >> 4) << 5) + (1 ^ ((y >> 3) & 1)) << 4;
+    coords.x = (x & 15) + ((x >> 4) << 5) + ((1 ^ ((y >> 3) & 1)) << 4);
     coords.y = ((y >> 4) << 3) + (y & 7);
 
     return coords;
@@ -52,12 +52,15 @@ void cmd_clear_screen() {
 }
 
 void cmd_set_brightness() {
+  while (Serial.available() < 1);
   uint8_t b = Serial.read();
   dma_display->setBrightness8(b);
 }
 
 void cmd_display_img() {
   for (int y = 0; y < virtualDisp->height(); y++) {
+
+    while (Serial.available() < virtualDisp->width()*2);
     for (int x = 0; x < virtualDisp->width(); x++) {
       uint8_t lowByte = Serial.read();       // Least significant byte
       uint8_t highByte = Serial.read();      // Most significant byte
@@ -69,6 +72,7 @@ void cmd_display_img() {
 }
 
 void cmd_put_pixel() {
+  while (Serial.available() < 4);
   uint8_t x = Serial.read();
   uint8_t y = Serial.read();
   uint8_t lowByte = Serial.read();       // Least significant byte
@@ -80,7 +84,9 @@ void cmd_put_pixel() {
 
 
 void setup() {
-  Serial.begin(115200);
+  // Serial.begin(115200);
+  Serial.begin(921600);
+
   HUB75_I2S_CFG::i2s_pins _pins={RL1, GL1, BL1, RL2, GL2, BL2, CH_A, CH_B, CH_C, CH_D, CH_E, LAT, OE, CLK};
 
   HUB75_I2S_CFG mxconfig(
